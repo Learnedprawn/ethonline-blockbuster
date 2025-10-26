@@ -29,8 +29,6 @@ contract Movie is
     uint256 marginAmount;
     uint256 numOfAllotments;
     uint256 lotPrice;
-    uint256 endTime;
-    string public url;
 
     address[] allotmentList;
     address[] nonAllotmentList;
@@ -45,6 +43,7 @@ contract Movie is
     event WinnerSelected(address indexed winner, address indexed movieAddress);
 
     event Launch(string indexed newUrl);
+    event TokenMinted(address indexed winner, uint256 amount);
     event Staked(
         address indexed staker,
         address indexed movie,
@@ -67,7 +66,6 @@ contract Movie is
     {
         pyusd = IERC20(pyusdAddress);
         totalAmount = _totalAmount;
-        endTime = block.timestamp + _endTime;
         numOfAllotments = _numOfTotalAllotments;
         lotPrice = totalAmount / numOfAllotments;
         s_entropy = IEntropyV2(0x4821932D0CDd71225A6d914706A621e0389D7061);
@@ -136,20 +134,18 @@ contract Movie is
                 require(success, "PYUSD transfer failed");
             }
         }
+        for (uint256 i = 0; i < winners.length; i++) {
+            _mint(winners[i], 1);
+            emit TokenMinted(winners[i], 1);
+        }
 
         bool success = pyusd.transfer(owner(), totalAmount);
         require(success, "PYUSD transfer failed");
     }
 
-    function launch(string memory newUrl) external onlyOwner {
-        url = newUrl;
-
-        emit Launch(newUrl);
-    }
-
     function refund() external {
         uint256 contractBalance = pyusd.balanceOf(address(this));
-        require(block.timestamp >= endTime, "End Time passed.");
+        // require(block.timestamp >= endTime, "End Time passed.");
         require(
             contractBalance >= totalAmount - marginAmount,
             "Contract Balance not reached Total Amount"
@@ -162,7 +158,7 @@ contract Movie is
     }
 
     function calculateResultRandomly() external payable {
-        require(block.timestamp >= endTime, "End Time Not yet Passed.");
+        // require(block.timestamp >= endTime, "End Time Not yet Passed.");
         uint256 fee = s_entropy.getFeeV2();
         uint64 sequenceNumber = s_entropy.requestV2{value: fee}();
 
@@ -204,9 +200,6 @@ contract Movie is
     }
 
     // Public functions
-    function getEndTime() public view {
-        block.timestamp + endTime;
-    }
 
     function getEntropy() internal view override returns (address) {
         return address(s_entropy);
